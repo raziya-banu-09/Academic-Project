@@ -15,7 +15,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 function UserProfile() {
-  
+
   const navigate = useNavigate();
   const [photo, setPhoto] = useState("/profileImage.png");
   const [isEditing, setIsEditing] = useState(false);
@@ -30,84 +30,72 @@ function UserProfile() {
   const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  if (!token) {
-    navigate("/login");
-    return;
-  }
-
-  // ✅ Check localStorage first
-  const savedImage = localStorage.getItem("profileImage");
-  if (savedImage) {
-    setPhoto(savedImage);
-  }
-
-  fetch("https://localhost:7148/api/User/profile", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then((res) => {
-      if (!res.ok) {
-        navigate("/login");
-        return;
-      }
-      return res.json();
+    fetch("https://localhost:7148/api/User/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
-    .then((data) => {
-      if (!data) return;
+      .then(res => res.json())
+      .then(data => {
 
-      setName(data.username || data.Username);
-      setEmail(data.email || data.Email);
-      setContact(data.contactNumber || data.ContactNumber || "");
+        setName(data.username);
+        setEmail(data.email);
+        setContact(data.contactNumber);
 
-      if (!savedImage && data.ProfileImage) {
-        setPhoto(`data:image/jpeg;base64,${data.ProfileImage}`);
-      }
-    });
-}, []);
+        if (data.profileImage) {
+          setPhoto(`data:image/jpeg;base64,${data.profileImage}`);
+        }
+      })
+      .catch(err => console.error(err));
+  }, []);
 
+
+  //user profile update handler  
   const handleSaveChanges = async () => {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  try {
-    const formData = new FormData();
+    try {
+      const formData = new FormData();
 
-    formData.append("username", name);
-    formData.append("email", email);
-    formData.append("contactNumber", contact);
+      formData.append("username", name);
+      formData.append("contactNumber", contact);
 
-    if (selectedFile) {
-      formData.append("ProfileImage", selectedFile);
-    }
-
-    const response = await axios.put(
-      "https://localhost:7148/api/User/update-profile",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      if (selectedFile) {
+        formData.append("ProfileImage", selectedFile);
       }
-    );
 
-    alert("Profile updated successfully");
-
-    // ✅ Update profile photo dynamically without reloading
-    if (selectedFile) {
-      setPhoto(URL.createObjectURL(selectedFile));
-      localStorage.setItem(
-        "profileImage",
-        URL.createObjectURL(selectedFile)
+      const response = await axios.put(
+        "https://localhost:7148/api/User/update-profile",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-    }
 
-  } catch (error) {
-    console.error(error);
-    alert("Update failed");
-  }
-};
+      alert("Profile updated successfully");
+
+      // Update profile photo dynamically without reloading
+      if (selectedFile) {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          setPhoto(reader.result); // show new image immediately
+        };
+
+        reader.readAsDataURL(selectedFile);
+
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Update failed");
+    }
+  };
 
   const handlePasswordSave = async () => {
     const token = localStorage.getItem("token");
@@ -147,37 +135,84 @@ function UserProfile() {
 
   /* Load saved images */
   useEffect(() => {
-    const loadSavedImages = () => {
-      const images = JSON.parse(localStorage.getItem("savedImages")) || [];
-      setSavedImages(images);
+    const fetchSavedImages = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await axios.get(
+          "https://localhost:7148/api/Save/user",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setSavedImages(res.data || []);
+      } catch (err) {
+        console.error("Error fetching saved images", err);
+      }
     };
 
-    loadSavedImages();
-    window.addEventListener("storage", loadSavedImages);
-
-    return () => window.removeEventListener("storage", loadSavedImages);
-  }, []);
+    if (activeTab === "saved") {
+      fetchSavedImages();
+    }
+  }, [activeTab]);
 
   /* Load uploaded images */
   useEffect(() => {
-    const loadUploadedImages = () => {
-      const images = JSON.parse(localStorage.getItem("uploadedImages")) || [];
-      setUploadedImages(images);
-    };
+  const fetchUploadedImages = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    loadUploadedImages();
-    window.addEventListener("storage", loadUploadedImages);
+      // ✅ GET USER ID FROM PROFILE
+      const userRes = await axios.get(
+        "https://localhost:7148/api/User/profile",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    return () =>
-      window.removeEventListener("storage", loadUploadedImages);
-  }, []);
+      const userId = userRes.data.userId;
 
-  const handleDeleteUploaded = (id) => {
-    const updatedImages = uploadedImages.filter((img) => img.id !== id);
+      // ✅ NOW FETCH IMAGES
+      const res = await axios.get(
+        `https://localhost:7148/api/image/user/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    setUploadedImages(updatedImages);
+      const formatted = res.data.map(img => ({
+        id: img.imageId,
+        imageUrl: img.imageUrl
+      }));
 
-    localStorage.setItem("uploadedImages", JSON.stringify(updatedImages));
+      setUploadedImages(formatted);
+
+    } catch (err) {
+      console.error("Error loading uploaded images", err);
+    }
+  };
+
+  if (activeTab === "uploaded") {
+    fetchUploadedImages();
+  }
+
+}, [activeTab]);
+
+  const handleDeleteUploaded = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`https://localhost:7148/api/image/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUploadedImages(prev => prev.filter(img => img.id !== id));
+    } catch (err) {
+      console.error("Delete failed", err);
+      alert("Failed to delete image");
+    }
   };
 
   const handleLogout = () => {
@@ -228,7 +263,11 @@ function UserProfile() {
                     const file = e.target.files[0];
                     if (file) {
                       setSelectedFile(file);
-                      setPhoto(URL.createObjectURL(file));
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setPhoto(reader.result);
+                      };
+                      reader.readAsDataURL(file);
                     }
                   }}
                 />
@@ -262,8 +301,9 @@ function UserProfile() {
               <input
                 type="text"
                 value={email}
+                readOnly
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-400 rounded-lg px-3 py-2 text-sm"
+                className="cursor-not-allowed w-full border border-gray-400 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
               />
             </div>
 
@@ -412,32 +452,35 @@ function UserProfile() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 w-full pb-6">
 
-                {imagesToShow.map((img) => (
-                  <motion.div
-                    key={img.id}
-                    whileHover={{ scale: 1.03 }}
-                    className="relative rounded-xl shadow-lg overflow-hidden"
-                  >
-                    <img
-                      src={img.urls.small}
-                      alt="img"
-                      className="w-full h-48 md:h-60 object-cover cursor-pointer"
-                      onClick={() =>
-                        navigate(`/image/${img.id}`, { state: { image: img } })
-                      }
-                    />
+                {imagesToShow.map((img) => {
+                  const id = img.id || img.imageId;
+const imageSrc = img.imageUrl;
+                  return (
+                    <motion.div
+                      key={id}
+                      whileHover={{ scale: 1.03 }}
+                      className="relative rounded-xl shadow-lg overflow-hidden"
+                    >
+                      <img
+                        src={imageSrc}
+                        alt="img"
+                        className="w-full h-48 md:h-60 object-cover cursor-pointer"
+                        onClick={() =>
+                          navigate(`/image/${id}`, { state: { image: img } })
+                        }
+                      />
 
-                    {activeTab === "uploaded" && (
-                      <button
-                        onClick={() => handleDeleteUploaded(img.id)}
-                        className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 p-2 rounded-full"
-                      >
-                        <FiTrash2 className="w-5 h-5" />
-                      </button>
-                    )}
-                  </motion.div>
-                ))}
-
+                      {activeTab === "uploaded" && (
+                        <button
+                          onClick={() => handleDeleteUploaded(id)}
+                          className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 p-2 rounded-full"
+                        >
+                          <FiTrash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>

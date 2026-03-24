@@ -5,59 +5,182 @@ import CloseButton from "../Components/CloseButton";
 import { FaRegHeart } from "react-icons/fa";
 import { MdSaveAlt } from "react-icons/md";
 import { GoBookmarkFill } from "react-icons/go";
+import axios from "axios";
 
 const ImageDetails = () => {
-  const profileImage =
-    localStorage.getItem("profileImage") || "/profileImage.png";
+  const ProfileImage =
+    localStorage.getItem("ProfileImage") || "/profileImage.png";
 
-  const { state } = useLocation();
-  const navigate = useNavigate();
-  const imageData = state?.image;
+  const token = localStorage.getItem("token");
 
-  const [likes, setLikes] = useState(imageData?.likes || 0);
+  const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  const [imageData, setImageData] = useState(state?.image || null);
+
+
+  //Likes count fetch
   useEffect(() => {
     if (!imageData) return;
-    const savedImages =
-      JSON.parse(localStorage.getItem("savedImages")) || [];
-    setSaved(savedImages.some((img) => img.id === imageData.id));
+
+    const fetchLikes = async () => {
+      try {
+        const res = await axios.get(
+          `https://localhost:7148/api/Like/count/${imageData.imageId}`
+        );
+        setLikes(res.data.likes);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchLikes();
   }, [imageData]);
 
-  const handleLike = () => {
-    setLikes((prev) => (liked ? prev - 1 : prev + 1));
-    setLiked(!liked);
+  useEffect(() => {
+    if (imageData) return;
+
+    const id = state?.image?.imageId || window.location.pathname.split("/").pop();
+
+    fetch(`https://localhost:7148/api/Image/${id}`)
+      .then(res => res.json())
+      .then(data => setImageData(data))
+      .catch(err => console.error(err));
+  }, []);
+
+  const handleLike = async () => {
+    try {
+      if (!token) return;
+
+      if (!liked) {
+        await axios.post(
+          `https://localhost:7148/api/Like/${imageData.imageId}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        await axios.delete(
+          `https://localhost:7148/api/Like/${imageData.imageId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      const res = await axios.get(
+        `https://localhost:7148/api/Like/count/${imageData.imageId}`
+      );
+
+      setLikes(res.data.likes);
+      setLiked(!liked);
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleSaveAll = () => {
-    let savedImages =
-      JSON.parse(localStorage.getItem("savedImages")) || [];
+  useEffect(() => {
+    if (!imageData) return;
 
-    if (saved) {
-      savedImages = savedImages.filter((img) => img.id !== imageData.id);
-    } else {
-      savedImages.push(imageData);
+    const fetchLikeStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await axios.get(
+          `https://localhost:7148/api/Like/isliked/${imageData.imageId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setLiked(res.data.isLiked);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchLikeStatus();
+  }, [imageData]);
+
+  useEffect(() => {
+    if (!imageData || !token) return;
+
+    const fetchSaveStatus = async () => {
+      try {
+        const res = await axios.get(
+          `https://localhost:7148/api/Save/isSaved/${imageData.imageId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        setSaved(res.data.isSaved);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchSaveStatus();
+  }, [imageData]);
+
+  const handleSaveAll = async () => {
+    try {
+      if (!token) return;
+
+      if (!saved) {
+        await axios.post(
+          `https://localhost:7148/api/Save/${imageData.imageId}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        await axios.delete(
+          `https://localhost:7148/api/Save/${imageData.imageId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      setSaved(!saved);
+
+    } catch (err) {
+      console.error(err);
     }
-
-    localStorage.setItem("savedImages", JSON.stringify(savedImages));
-    setSaved(!saved);
   };
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(imageData.urls.full);
+      const token = localStorage.getItem("token");
+
+      if (token) {
+        await axios.post(
+          `https://localhost:7148/api/Download/${imageData.imageId}`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      const response = await fetch(imageData.imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
 
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `${imageData.id}.jpg`;
+      link.download = `${imageData.imageId}.jpg`;
 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
       window.URL.revokeObjectURL(url);
+
     } catch (err) {
       console.error("Download failed", err);
     }
@@ -91,7 +214,7 @@ const ImageDetails = () => {
           <div className="bg-white rounded-3xl shadow-lg p-4 flex flex-col">
             <div className="flex items-center justify-center">
               <img
-                src={imageData.urls.full}
+                src={imageData.imageUrl}
                 className="max-h-[70vh] object-contain rounded-2xl"
                 alt=""
               />
@@ -99,13 +222,13 @@ const ImageDetails = () => {
 
             <div className="flex items-center mt-4">
               <img
-                src={profileImage}
+                src={imageData.profileImage || "/profileImage.png"}
                 className="w-9 h-9 rounded-full mr-3"
                 alt=""
               />
               <div>
                 <p className="font-semibold text-gray-800">
-                  {imageData.user.username}
+                  {imageData.username}
                 </p>
                 <p className="text-xs text-gray-500">Photographer</p>
               </div>
@@ -132,14 +255,14 @@ const ImageDetails = () => {
                 Category
               </p>
               <p className="text-gray-700 font-medium mb-4">
-                {imageData.category || "No category specified"}
+                {imageData.categoryName || "No category specified"}
               </p>
 
               <p className="text-sm uppercase tracking-wide text-gray-400 mb-1 mt-10">
                 Description
               </p>
               <p className="text-gray-700 font-medium leading-relaxed">
-                {imageData.alt_description || "No description available"}
+                {imageData.description || "No description available"}
               </p>
             </div>
 

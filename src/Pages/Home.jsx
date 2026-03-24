@@ -5,7 +5,8 @@ import SearchBar from '../Components/SearchBar';
 import ImageGallery from './ImageGallery';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineDotsVertical } from "react-icons/hi";
-import { jwtDecode } from "jwt-decode";
+import  {jwtDecode} from "jwt-decode";
+import ImageGalleryDemo from './ImageGalleryDemo';
 
 
 const Home = () => {
@@ -16,26 +17,19 @@ const Home = () => {
   const [profileImage, setProfileImage] = useState("/profileImage.png");
 
   useEffect(() => {
-    const savedImage = localStorage.getItem("profileImage");
-    if (savedImage) {
-      setProfileImage(savedImage);
-    }
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    fetch("https://localhost:7148/api/User/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.ProfileImage) {
-          const imgSrc = `data:image/jpeg;base64,${data.ProfileImage}`;
-          setProfileImage(imgSrc);
-          localStorage.setItem("profileImage", imgSrc);
-        }
-      });
-  }, []);
+  fetch("https://localhost:7148/api/User/profile", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.profileImage) {
+        setProfileImage(`data:image/jpeg;base64,${data.profileImage}`);
+      }
+    });
+}, []);
 
   useEffect(() => {
     if (!location.state?.category) {

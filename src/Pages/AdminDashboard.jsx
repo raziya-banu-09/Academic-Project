@@ -1,50 +1,108 @@
 import React, { useState, useEffect } from "react";
 import {
-  FiUsers, FiImage, FiCheck, FiX, FiEdit, FiLogOut,
-  FiMail, FiUserPlus, FiBarChart2, FiBell
+  FiUsers, FiImage, FiEdit, FiLogOut,
+  FiMail, FiBarChart2, FiGrid, FiTrendingUp
 } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import Logo from '../Components/Logo';
 import CloseButton from '../Components/CloseButton';
+import Analytics from "../Pages/AdminSections/Analytics";
+import ImagesApproval from "../Pages/AdminSections/ImagesApproval";
+import AddCategory from "../Pages/AdminSections/AddCategory";
+import RegisteredUsers from "./AdminSections/RegisteredUsers";
+import { IoMdImages } from "react-icons/io";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
 
 function AdminDashboard() {
+
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [photo, setPhoto] = useState("https://i.pinimg.com/736x/d7/d0/13/d7d013aa4c1ee9bc96fc8ee329467d34.jpg");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
+  //get admin profile
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (storedUser) {
-      setEmail(storedUser.email);
-      setName(storedUser.username);
-    }
+    const token = localStorage.getItem("token");
+
+    axios
+      .get("https://localhost:7148/api/Admin/admin-profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        setName(res.data.username);
+        setEmail(res.data.email);
+
+        if (res.data.profileImage) {
+          setPhoto("data:image/jpeg;base64," + res.data.profileImage);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   }, []);
+
+  //admin profile update
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    setSelectedFile(file); // store file
+    setPhoto(URL.createObjectURL(file)); // preview image
+  };
+
+  const handleSaveChanges = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const formData = new FormData();
+
+      formData.append("Username", name);
+
+      if (selectedFile) {
+        formData.append("ProfileImage", selectedFile);
+      }
+
+      await axios.put(
+        "https://localhost:7148/api/Admin/update-admin-profile",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      alert("Profile updated successfully");
+
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("Update failed");
+    }
+  };
+
+  const [activeSection, setActiveSection] = useState("dashboard");
 
   const [totalUsers, setTotalUsers] = useState(20000);
   const [totalImages, setTotalImages] = useState(809000);
 
-  const pendingImages = [
-    { id: 1, src: "https://i.pinimg.com/736x/a0/c0/c2/a0c0c2ffd113c7ac217be4b9113bf6f6.jpg" },
-    { id: 2, src: "https://i.pinimg.com/1200x/29/67/62/2967628f8a4562bced4cdc73c9693884.jpg" },
-    { id: 3, src: "https://i.pinimg.com/736x/4f/4c/4c/4f4c4cb2ad25925fba847b1a6fd4d78a.jpg" },
-    { id: 4, src: "https://images.pexels.com/photos/1027811/pexels-photo-1027811.jpeg" },
-    { id: 5, src: "https://i.pinimg.com/736x/63/2d/b6/632db665d5040160dcc0b4077480b7be.jpg" },
-    { id: 6, src: "https://i.pinimg.com/736x/41/cf/6a/41cf6a72b3f638bf3bca9a677381d61c.jpg" },
-    { id: 7, src: "https://i.pinimg.com/736x/4f/d8/51/4fd8513a20ebab568ae0afb64bc46804.jpg" },
-    { id: 8, src: "https://i.pinimg.com/736x/f8/b0/d5/f8b0d5dd7988f532e35b9910458d9e8a.jpg" },
-    { id: 9, src: "https://i.pinimg.com/1200x/9d/9b/df/9d9bdf1e1ad8688245dffa376c6a4630.jpg" },
-    { id: 10, src: "https://i.pinimg.com/736x/76/95/a9/7695a947bfe79476bb07c9abb1062531.jpg" },
-    { id: 11, src: "https://i.pinimg.com/1200x/10/0f/27/100f2754eb7fd5c7723fa3dcf2556945.jpg" },
-    { id: 12, src: "https://i.pinimg.com/1200x/70/9a/84/709a84f2a7bae13582f5c56a983a7182.jpg" },
-  ];
 
-  const handleLogout = () => alert("Logged out successfully!");
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setPhoto(URL.createObjectURL(file));
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
   };
+
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -53,7 +111,12 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen max-w-full flex flex-col bg-gradient-to-br from-pink-50 to-blue-50">
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="min-h-screen max-w-full flex flex-col overflow-hidden bg-gradient-to-br from-pink-50 to-blue-50"
+    >
 
       <header className="shadow-md bg-white w-full sticky top-0 z-50 flex justify-between items-center">
         <Logo />
@@ -61,7 +124,12 @@ function AdminDashboard() {
       </header>
       <div className="flex-1 flex flex-col md:flex-row pt-4 px-4 gap-4 md:gap-6">
         {/* Left Sidebar */}
-        <div className="w-full md:w-[330px] bg-white shadow-xl rounded-2xl p-6 flex flex-col h-auto md:h-[calc(100vh-5rem)]">
+        <motion.div
+          initial={{ x: -80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full md:w-[330px] bg-white shadow-xl rounded-2xl p-6 flex flex-col h-auto md:h-[calc(100vh-5rem)]"
+        >
           <div className="flex flex-col items-center space-y-6">
             <div className="relative">
               <img src={photo} alt="Admin" className="w-32 h-32 rounded-full object-cover" />
@@ -88,7 +156,7 @@ function AdminDashboard() {
 
             <div className="w-full flex flex-col sm:flex-row sm:items-center">
               {/* Label + Icon */}
-              <label className="flex items-center mb-2 sm:mb-0 sm:w-20">
+              <label className="flex items-center sm:mb-0 sm:w-20">
                 <FiMail className="mr-2 ml-1 w-5 h-4 text-blue-500" />
                 <span className="text-md ">Email:</span>
               </label>
@@ -105,88 +173,163 @@ function AdminDashboard() {
           </div>
 
           {/* Sidebar Menu */}
-          <div className="mt-2 space-y-0">
-            <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+          <div className="mt-1 space-y-0">
+            <motion.button
+              whileHover={{ x: 6 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              className={`flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer ${activeSection === "registeredUsers" ? "bg-gray-100" : ""
+                }`}
+              onClick={() => setActiveSection("registeredUsers")}
+            >
               <FiUsers className="mr-2 text-green-500" /> Registered Users
-            </button>
-            <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer">
-              <FiUserPlus className="mr-2 text-purple-500" /> New Users
-            </button>
-            <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+            </motion.button>
+
+            <motion.button
+              whileHover={{ x: 6 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              onClick={() => setActiveSection("category")}
+
+            >
+              <FiGrid className="mr-2 text-purple-500" /> Add Category
+            </motion.button>
+
+            <motion.button
+              whileHover={{ x: 6 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              onClick={() => setActiveSection("analytics")}
+
+            >
               <FiBarChart2 className="mr-2 text-orange-500" /> Analytics
-            </button>
-            <button className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer">
-              <FiBell className="mr-2 text-red-500" /> Notifications
-            </button>
-            {/* Logout Button */}
-            <div className="mt-4 flex justify-center">
-              <Link to="/">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-3 px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition text-sm sm:text-base"
+            </motion.button>
+
+            <motion.button
+              whileHover={{ x: 6 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              onClick={() => setActiveSection("images")}
+
+            >
+              <FiImage className="mr-2 text-red-500" /> Images for Approval
+            </motion.button>
+
+            {/* Save & Logout Button */}
+            <div className="flex flex-col sm:flex-row gap-6 w-full mt-7">
+
+              <motion.button
+                whileHover={{ scale: 1.06, y: -2 }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold text-sm sm:text-base shadow-md hover:shadow-lg flex items-center justify-center gap-2 hover:from-emerald-600 hover:to-green-700 transition-all duration-200"
+                onClick={handleSaveChanges}
+              >
+                Save Changes
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="w-full px-2 py-1.5 rounded-md bg-red-500 text-white transition shadow-md hover:shadow-lg flex items-center justify-center gap-1"
+                onClick={handleLogout}
+              >
+                <motion.span
+                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
                 >
-                  <FiLogOut className="w-5 h-5" /> Logout
-                </button>
-              </Link>
+                  <FiLogOut />
+                </motion.span>
+                Logout
+              </motion.button>
+
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Sidebar */}
-        <div className="flex-1 bg-white shadow-xl rounded-2xl p-4 overflow-hidden md:h-[calc(100vh-5rem)]"
+        <motion.div
+          key={activeSection}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex-1 bg-white rounded-2xl p-5 overflow-hidden md:h-[calc(100vh-5rem)]"
         >
-          <h1 className="text-2xl font-bold text-center text-pink-500 font-[Poppins] mb-6">Admin Dashboard</h1>
 
-          {/* Stats */}
-          <div className="flex flex-col sm:flex-row p-2 justify-center gap-6 mb-6">
-            {/* Total Users */}
-            <div className="bg-gradient-to-r from-blue-400 to-blue-600 p-4 h-24 
-                          flex items-center justify-between rounded-lg shadow-md 
-                          transform transition duration-300 hover:scale-105 cursor-pointer 
-                          w-full sm:w-120">
-              <div>
-                <p className="text-white text-sm">Total Users</p>
-                <h3 className="text-lg font-bold text-white">{formatNumber(totalUsers)}</h3>
-              </div>
-              <FiUsers className="w-5 h-5 text-white" />
-            </div>
+          {/* Dashboard Welcome Panel */}
+          {activeSection === "dashboard" && (
+            <div className="h-full w-full flex items-center justify-center">
 
-            {/* Total Images */}
-            <div className="bg-gradient-to-r from-green-400 to-green-600 p-4 h-24 
-                          flex items-center justify-between rounded-lg shadow-md 
-                          transform transition duration-300 hover:scale-105 cursor-pointer 
-                          w-full sm:w-120">
-              <div>
-                <p className="text-white text-sm">Total Images</p>
-                <h3 className="text-lg font-bold text-white">{formatNumber(totalImages)}</h3>
-              </div>
-              <FiImage className="w-5 h-5 text-white" />
-            </div>
-          </div>
+              <div className="w-full h-full rounded-2xl p-10 flex flex-col justify-center 
+    bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 text-black
+    relative overflow-hidden">
 
-          {/* Pending Images Section */}
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Pending Images for Approval</h2>
-          <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 border-white rounded-2xl">
-              {pendingImages.map((img) => (
-                <div key={img.id} className="relative overflow-hidden rounded-xl shadow-lg transform transition duration-300 hover:scale-105 cursor-pointer">
-                  <img src={img.src} alt={"Pending" + img.id} className="w-full h-64 object-cover rounded-xl" />
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-6">
-                    <button className="flex items-center bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition">
-                      <FiCheck className="mr-1" /> Accept
-                    </button>
-                    <button className="flex items-center bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition">
-                      <FiX className="mr-1" /> Reject
-                    </button>
+                {/* Background Glow Circles */}
+                <div className="absolute w-72 h-72 bg-white/10 rounded-full -top-20 -left-20 blur-2xl"></div>
+                <div className="absolute w-72 h-72 bg-white/10 rounded-full -bottom-20 -right-20 blur-2xl"></div>
+
+                {/* Content */}
+                <div className="relative z-10 max-w-2xl">
+
+                  <h1 className="text-4xl font-bold mb-4">
+                    Welcome Back, Admin 👋
+                  </h1>
+
+                  <p className="text-lg text-black/90 mb-8 font-[Poppins]">
+                    Manage your platform efficiently. Approve images, organize
+                    categories, and monitor user activity from this admin dashboard.
+                    Use the sidebar to navigate between different sections.
+                  </p>
+
+                  {/* Feature Highlights */}
+                  <div className="flex flex-wrap gap-4">
+
+                    <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md px-5 py-3 rounded-lg">
+                      <IoMdImages className="text-xl" />
+                      <span className="font-medium">Image moderation</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md px-5 py-3 rounded-lg">
+                      <FiTrendingUp className="text-xl" />
+                      <span className="font-medium">Platform Analytics</span>
+                    </div>
+
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-        </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* Registered Users Section */}
+          {activeSection === "registeredUsers" && <RegisteredUsers />}
+
+          {/* Category Section */}
+          {activeSection === "category" && <AddCategory />}
+
+          {/* Analytics Section */}
+          {activeSection === "analytics" && (
+            <Analytics
+              totalUsers={totalUsers}
+              totalImages={totalImages}
+              formatNumber={formatNumber}
+            />
+          )}
+
+          {/* Image Approval Section */}
+          {activeSection === "images" && <ImagesApproval />
+          }
+
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 export default AdminDashboard;
