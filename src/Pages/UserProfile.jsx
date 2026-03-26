@@ -165,7 +165,6 @@ function UserProfile() {
     try {
       const token = localStorage.getItem("token");
 
-      // ✅ GET USER ID FROM PROFILE
       const userRes = await axios.get(
         "https://localhost:7148/api/User/profile",
         {
@@ -175,7 +174,6 @@ function UserProfile() {
 
       const userId = userRes.data.userId;
 
-      // ✅ NOW FETCH IMAGES
       const res = await axios.get(
         `https://localhost:7148/api/image/user/${userId}`,
         {
