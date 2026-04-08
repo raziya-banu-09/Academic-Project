@@ -7,63 +7,115 @@ import { Link } from "react-router-dom";
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col w-full min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50">
-      
-      {/* Header */}
-      <header className="shadow-md bg-white sticky top-0 z-50 mb-4 sm:mb-0">
-        <Logo />
+    <div className="flex flex-col w-full min-h-screen bg-[#fafafa] overflow-x-hidden">
+
+      {/* ── HEADER ── */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-5 sm:px-10 flex items-center justify-between h-16">
+          <Logo />
+          <div className="flex items-center gap-3">
+            <Link to="/login">
+              <button className="hidden sm:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:text-pink-500 transition-colors">
+                Log in
+              </button>
+            </Link>
+            <Link to="/register">
+              <button className="hidden sm:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-md hover:shadow-pink-200 hover:scale-105 transition-all">
+                Get started
+              </button>
+            </Link>
+          </div>
+        </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="flex flex-col md:flex-row items-center justify-between px-6 md:px-20 flex-grow gap-12">
-        
-        {/* Left Content */}
+      {/* ── HERO ── */}
+      <section className="relative max-w-7xl mx-auto w-full px-5 sm:px-10 pt-10 pb-20 flex flex-col md:flex-row items-center gap-14 md:gap-10 flex-grow">
+
+        {/* decorative blobs */}
+        <div className="pointer-events-none absolute -top-20 -left-24 w-72 h-72 rounded-full bg-pink-200 opacity-30 blur-3xl" />
+        <div className="pointer-events-none absolute top-10 right-0 w-64 h-64 rounded-full bg-blue-200 opacity-30 blur-3xl" />
+
+        {/* left */}
         <motion.div
-          className="max-w-xl text-center md:text-left space-y-6"
+          className="flex-1 text-center md:text-left space-y-7 z-10"
           initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}   
-          transition={{ duration: 1, ease: "easeOut" }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75, ease: "easeOut" }}
         >
-          <h1 className="text-4xl sm:text-5xl md:text-5xl font-extrabold text-gray-800 leading-snug">
-            Discover, Save & Share Ideas on{" "}
-            <span className="bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent">
-              PixHub
-            </span>
+          <span className="inline-block px-4 py-1.5 rounded-full bg-pink-100 text-pink-600 text-xs font-bold tracking-widest uppercase">
+            ✦ Your creative universe
+          </span>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.1] tracking-tight">
+            Discover, Save &{" "}
+            <span className="bg-gradient-to-r from-pink-500 via-violet-500 to-blue-500 bg-clip-text text-transparent">
+              Share Ideas
+            </span>{" "}
+            on PixHub
           </h1>
 
-          <p className="text-gray-600 text-lg sm:text-xl leading-relaxed font-[Nunito Sans]">
+          <p className="text-gray-500 text-lg sm:text-xl leading-relaxed max-w-lg mx-auto md:mx-0">
             Explore creative inspiration. Save what you love and share your own
             ideas with others.
           </p>
 
-          {/* Buttons Group */}
-          <div className="flex flex-row gap-4 sm:gap-6 justify-center md:justify-start">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             <Link to="/login">
-              <Button className="bg-pink-500 cursor-pointer mt-4 text-white rounded-lg hover:bg-pink-600 transition hover:scale-110 ">
-                Explore
-              </Button>
-            </Link> 
-
+              <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:scale-105 transition-all text-base">
+                Start Exploring →
+              </button>
+            </Link>
             <Link to="/register">
-              <Button className="bg-blue-500 cursor-pointer mt-4 text-white rounded-lg hover:bg-blue-600 transition hover:scale-110 ">
-                Register
-              </Button>
+              <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold border-2 border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all text-base">
+                Create Account
+              </button>
             </Link>
           </div>
+
         </motion.div>
 
-        {/* Right Image */}
+        {/* right image */}
         <motion.div
-          className="flex justify-center md:justify-end w-full md:w-1/2"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}  
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          className="flex-1 flex justify-center md:justify-end z-10"
+          initial={{ opacity: 0, scale: 0.88, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 1, ease: "easeOut", delay: 0.15 }}
         >
-          <img
-            src={heroImage}
-            alt="Hero"
-            className="w-64 sm:w-80 md:w-[26rem] rounded-3xl hover:scale-105 transition"
-          />
+          <div className="relative">
+            {/* glow ring */}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-pink-300 via-violet-300 to-blue-300 opacity-40 blur-2xl scale-105" />
+            <img
+              src={heroImage}
+              alt="PixHub preview"
+              className="relative w-64 sm:w-80 md:w-[28rem] rounded-3xl shadow-2xl ring-1 ring-white/50 hover:scale-[1.03] transition-transform duration-500"
+            />
+            {/* floating badge bottom-left */}
+            <motion.div
+              className="absolute -bottom-4 -left-6 bg-white rounded-2xl shadow-xl px-4 py-2.5 flex items-center gap-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.9, duration: 0.6 }}
+            >
+              <span className="text-xl">📌</span>
+              <div>
+                <p className="text-xs text-gray-400">Just saved</p>
+                <p className="text-xs font-bold text-gray-800">Morning Mood Board</p>
+              </div>
+            </motion.div>
+            {/* floating badge top-right */}
+            <motion.div
+              className="absolute -top-4 -right-5 bg-white rounded-2xl shadow-xl px-4 py-2.5 flex items-center gap-2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.1, duration: 0.6 }}
+            >
+              <span className="text-xl">❤️</span>
+              <div>
+                <p className="text-xs text-gray-400">Trending</p>
+                <p className="text-xs font-bold text-gray-800">+12k saves today</p>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </section>
 
@@ -75,8 +127,9 @@ export default function LandingPage() {
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
         © 2025 PixHub — Crafted with ❤️
-       
+
       </motion.footer>
+
     </div>
   );
 }

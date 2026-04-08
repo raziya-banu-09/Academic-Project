@@ -7,10 +7,16 @@ import { FaWhatsapp, FaFacebook, FaInstagram, FaSnapchat, FaTwitter } from "reac
 
 export default function AboutAndContact() {
   return (
-    <div className="min-h-screen max-w-full flex flex-col bg-gradient-to-br from-pink-50 to-blue-50">
+    <div className="min-h-screen max-w-full  flex flex-col bg-gradient-to-br from-pink-50 to-blue-50">
+    <div className="relative overflow-hidden">
+  
+  <div className="absolute top-[-100px] left-[-100px] w-[300px] h-[300px] bg-pink-300 opacity-30 blur-3xl rounded-full"></div>
+  
+  <div className="absolute bottom-[-100px] right-[-100px] w-[300px] h-[300px] bg-blue-300 opacity-30 blur-3xl rounded-full"></div>
+
 
       {/* Header */}
-      <header className="shadow-md bg-white w-full sticky top-0 z-50 flex justify-between items-center ">
+      <header className="shadow-md bg-white backdrop-blur-md w-full sticky top-0 z-50 flex justify-between items-center ">
         <Logo />
         <CloseButton/>
       </header>
@@ -85,6 +91,7 @@ export default function AboutAndContact() {
           ))}
         </div>
       </motion.section>
+    </div>
     </div>
   );
 }

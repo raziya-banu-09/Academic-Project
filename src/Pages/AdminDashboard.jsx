@@ -94,9 +94,6 @@ function AdminDashboard() {
 
   const [activeSection, setActiveSection] = useState("dashboard");
 
-  const [totalUsers, setTotalUsers] = useState(20000);
-  const [totalImages, setTotalImages] = useState(809000);
-
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -115,10 +112,10 @@ function AdminDashboard() {
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="min-h-screen max-w-full flex flex-col overflow-hidden bg-gradient-to-br from-pink-50 to-blue-50"
+      className="min-h-screen max-w-full flex flex-col bg-gradient-to-br from-pink-50 to-blue-50"
     >
 
-      <header className="shadow-md bg-white w-full sticky top-0 z-50 flex justify-between items-center">
+      <header className="shadow-md bg-white w-full sticky top-0 z-50 flex justify-between items-center overflow-hidden">
         <Logo />
         <CloseButton />
       </header>
@@ -128,58 +125,67 @@ function AdminDashboard() {
           initial={{ x: -80, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="w-full md:w-[330px] bg-white shadow-xl rounded-2xl p-6 flex flex-col h-auto md:h-[calc(100vh-5rem)]"
+          className="w-full md:w-[300px] bg-white shadow-lg rounded-2xl p-5 flex flex-col justify-between h-auto md:h-[calc(100vh-5rem)]"
         >
-          <div className="flex flex-col items-center space-y-6">
-            <div className="relative">
-              <img src={photo} alt="Admin" className="w-32 h-32 rounded-full object-cover" />
-              <label className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-full cursor-pointer">
-                <FiEdit className="w-4 h-4" />
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-              </label>
-            </div>
 
-            {/* Name Edit */}
-            <div className="flex flex-col items-center w-full">
-              {!isEditing ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-gray-800 font-semibold break-words text-center">{name}</p>
-                  <FiEdit className="text-blue-500 w-5 h-5 cursor-pointer hover:scale-110 transition"
-                    onClick={() => setIsEditing(true)} />
-                </div>
-              ) : (
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  onBlur={() => setIsEditing(false)} autoFocus
-                  className="border border-gray-300 rounded-lg px-2 py-1 text-sm text-center w-full" />
-              )}
-            </div>
+          {/* TOP SECTION */}
+          <div className="flex flex-col items-center gap-3">
 
-            <div className="w-full flex flex-col sm:flex-row sm:items-center">
-              {/* Label + Icon */}
-              <label className="flex items-center sm:mb-0 sm:w-20">
-                <FiMail className="mr-2 ml-1 w-5 h-4 text-blue-500" />
-                <span className="text-md ">Email:</span>
-              </label>
-
-              {/* Email Input Field */}
-              <input
-                type="text"
-                value={email}
-                readOnly
-                className="w-full border border-gray-400 rounded-lg ml-2 px-4 py-2 text-sm bg-gray-100 cursor-not-allowed"
+            {/* Profile Image */}
+            <div className="relative group">
+              <img
+                src={photo}
+                alt="Admin"
+                className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
               />
 
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition">
+
+                <label
+                  title="Change photo"
+                  className="bg-white text-blue-600 p-2 rounded-full cursor-pointer hover:scale-110 transition"
+                >
+                  <FiEdit className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                </label>
+
+                <button
+                  title="Remove photo"
+                  className="bg-white text-red-500 h-8 w-8 rounded-full hover:scale-110 transition"
+                  onClick={() => {
+                    setPhoto("https://i.pinimg.com/736x/d7/d0/13/d7d013aa4c1ee9bc96fc8ee329467d34.jpg");
+                    setSelectedFile(null);
+                  }}
+                >
+                  ✕
+                </button>
+
+              </div>
             </div>
+
+            {/* Name */}
+            <p className="text-lg font-semibold text-gray-800">{name}</p>
+
+            {/* Email */}
+            <div className="w-fit text-center block text-gray-900 md:mb-0 mb-1.5">
+              <p className="text-sm bg-gray-100 rounded-lg outline-none px-2 py-2 cursor-not-allowed">{email}</p>
+            </div>
+
           </div>
 
-          {/* Sidebar Menu */}
-          <div className="mt-1 space-y-0">
+          {/* MENU SECTION */}
+          <div>
+
             <motion.button
               whileHover={{ x: 6 }}
               whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12 }}
-              className={`flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer ${activeSection === "registeredUsers" ? "bg-gray-100" : ""
-                }`}
+              className={`flex items-center w-full p-2 rounded-lg hover:bg-gray-100 ${activeSection === "registeredUsers" ? "bg-gray-100" : ""}`}
               onClick={() => setActiveSection("registeredUsers")}
             >
               <FiUsers className="mr-2 text-green-500" /> Registered Users
@@ -188,10 +194,8 @@ function AdminDashboard() {
             <motion.button
               whileHover={{ x: 6 }}
               whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12 }}
-              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100"
               onClick={() => setActiveSection("category")}
-
             >
               <FiGrid className="mr-2 text-purple-500" /> Add Category
             </motion.button>
@@ -199,10 +203,8 @@ function AdminDashboard() {
             <motion.button
               whileHover={{ x: 6 }}
               whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12 }}
-              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100"
               onClick={() => setActiveSection("analytics")}
-
             >
               <FiBarChart2 className="mr-2 text-orange-500" /> Analytics
             </motion.button>
@@ -210,46 +212,27 @@ function AdminDashboard() {
             <motion.button
               whileHover={{ x: 6 }}
               whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12 }}
-              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100"
               onClick={() => setActiveSection("images")}
-
             >
               <FiImage className="mr-2 text-red-500" /> Images for Approval
             </motion.button>
 
-            {/* Save & Logout Button */}
-            <div className="flex flex-col sm:flex-row gap-6 w-full mt-7">
-
-              <motion.button
-                whileHover={{ scale: 1.06, y: -2 }}
-                whileTap={{ scale: 0.92 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold text-sm sm:text-base shadow-md hover:shadow-lg flex items-center justify-center gap-2 hover:from-emerald-600 hover:to-green-700 transition-all duration-200"
-                onClick={handleSaveChanges}
-              >
-                Save Changes
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.04, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="w-full px-2 py-1.5 rounded-md bg-red-500 text-white transition shadow-md hover:shadow-lg flex items-center justify-center gap-1"
-                onClick={handleLogout}
-              >
-                <motion.span
-                  whileHover={{ scale: 1.04, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <FiLogOut />
-                </motion.span>
-                Logout
-              </motion.button>
-
-            </div>
           </div>
+
+          {/* LOGOUT */}
+          <div className="flex justify-center mt-6">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-fit flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white"
+              onClick={handleLogout}
+            >
+              <FiLogOut /> Logout
+            </motion.button>
+
+          </div>
+
         </motion.div>
 
         {/* Right Sidebar */}
@@ -258,8 +241,7 @@ function AdminDashboard() {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex-1 bg-white rounded-2xl p-5 overflow-hidden md:h-[calc(100vh-5rem)]"
-        >
+          className="flex-1 bg-white rounded-2xl p-5 overflow-y-auto md:h-[calc(100vh-5rem)]" >
 
           {/* Dashboard Welcome Panel */}
           {activeSection === "dashboard" && (
@@ -317,8 +299,6 @@ function AdminDashboard() {
           {/* Analytics Section */}
           {activeSection === "analytics" && (
             <Analytics
-              totalUsers={totalUsers}
-              totalImages={totalImages}
               formatNumber={formatNumber}
             />
           )}
@@ -328,8 +308,8 @@ function AdminDashboard() {
           }
 
         </motion.div>
-      </div>
-    </motion.div>
+      </div >
+    </motion.div >
   );
 }
 export default AdminDashboard;

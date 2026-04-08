@@ -13,6 +13,8 @@ import Logo from "../Components/Logo";
 import CloseButton from "../Components/CloseButton";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function UserProfile() {
 
@@ -25,9 +27,12 @@ function UserProfile() {
   const [savedImages, setSavedImages] = useState([]);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [activeTab, setActiveTab] = useState("saved");
-  const [showPasswordBox, setShowPasswordBox] = useState(false);
   const [password, setPassword] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [loadingUploaded, setLoadingUploaded] = useState(false);
+  const [tempName, setTempName] = useState("");
+  const [tempContact, setTempContact] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -40,11 +45,9 @@ function UserProfile() {
     })
       .then(res => res.json())
       .then(data => {
-
         setName(data.username);
         setEmail(data.email);
         setContact(data.contactNumber);
-
         if (data.profileImage) {
           setPhoto(`data:image/jpeg;base64,${data.profileImage}`);
         }
@@ -52,48 +55,41 @@ function UserProfile() {
       .catch(err => console.error(err));
   }, []);
 
-
-  //user profile update handler  
   const handleSaveChanges = async () => {
     const token = localStorage.getItem("token");
 
     try {
       const formData = new FormData();
+      formData.append("username", tempName);
+      formData.append("contactNumber", tempContact);
+      if (selectedFile) formData.append("ProfileImage", selectedFile);
 
-      formData.append("username", name);
-      formData.append("contactNumber", contact);
-
-      if (selectedFile) {
-        formData.append("ProfileImage", selectedFile);
-      }
-
-      const response = await axios.put(
+      await axios.put(
         "https://localhost:7148/api/User/update-profile",
         formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert("Profile updated successfully");
+      setName(tempName);
+      setContact(tempContact);
 
-      // Update profile photo dynamically without reloading
-      if (selectedFile) {
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-          setPhoto(reader.result); // show new image immediately
-        };
-
-        reader.readAsDataURL(selectedFile);
-
+      if (password) {
+        await axios.put(
+          "https://localhost:7148/api/User/update-password",
+          { password },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.success("Password updated successfully!");
       }
+
+      toast.success("Profile updated successfully!");
+      setIsEditing(false);
+      setPassword("");
+      setSelectedFile(null);
 
     } catch (error) {
       console.error(error);
-      alert("Update failed");
+      toast.error("Update failed!");
     }
   };
 
@@ -101,30 +97,23 @@ function UserProfile() {
     const token = localStorage.getItem("token");
 
     if (!password) {
-      alert("Password cannot be empty");
+      toast.error("Password cannot be empty!");
       return;
     }
 
     try {
       await axios.put(
         "https://localhost:7148/api/User/update-password",
-        {
-          password: password
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { password },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert("Password updated successfully");
+      toast.success("Password updated successfully!");
       setPassword("");
       setShowPasswordBox(false);
-
     } catch (error) {
-      console.error("Password update failed", error);
-      alert("Password update failed");
+      console.error(error);
+      toast.error("Password update failed!");
     }
   };
 
@@ -133,84 +122,99 @@ function UserProfile() {
     setShowPasswordBox(false);
   };
 
-  /* Load saved images */
   useEffect(() => {
     const fetchSavedImages = async () => {
       try {
+        setLoadingSaved(true);
         const token = localStorage.getItem("token");
-
-        const res = await axios.get(
-          "https://localhost:7148/api/Save/user",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
+        const res = await axios.get("https://localhost:7148/api/Save/user", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setSavedImages(res.data || []);
       } catch (err) {
         console.error("Error fetching saved images", err);
+      } finally {
+        setLoadingSaved(false);
       }
     };
 
-    if (activeTab === "saved") {
-      fetchSavedImages();
-    }
+    if (activeTab === "saved") fetchSavedImages();
   }, [activeTab]);
 
-  /* Load uploaded images */
   useEffect(() => {
-  const fetchUploadedImages = async () => {
-    try {
-      const token = localStorage.getItem("token");
+    const fetchUploadedImages = async () => {
+      try {
+        setLoadingUploaded(true);
+        const token = localStorage.getItem("token");
 
-      const userRes = await axios.get(
-        "https://localhost:7148/api/User/profile",
-        {
+        const userRes = await axios.get("https://localhost:7148/api/User/profile", {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        });
 
-      const userId = userRes.data.userId;
+        const userId = userRes.data.userId;
 
-      const res = await axios.get(
-        `https://localhost:7148/api/image/user/${userId}`,
-        {
+        const res = await axios.get(`https://localhost:7148/api/image/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        });
 
-      const formatted = res.data.map(img => ({
-        id: img.imageId,
-        imageUrl: img.imageUrl
-      }));
+        const formatted = res.data.map(img => ({
+          id: img.imageId,
+          imageUrl: img.imageUrl,
+          title: img.title,
+          description: img.description,
+          categoryId: img.categoryId
+        }));
 
-      setUploadedImages(formatted);
+        setUploadedImages(formatted);
+      } catch (err) {
+        console.error("Error loading uploaded images", err);
+      } finally {
+        setLoadingUploaded(false);
+      }
+    };
 
-    } catch (err) {
-      console.error("Error loading uploaded images", err);
-    }
-  };
+    if (activeTab === "uploaded") fetchUploadedImages();
+  }, [activeTab]);
 
-  if (activeTab === "uploaded") {
-    fetchUploadedImages();
-  }
-
-}, [activeTab]);
-
-  const handleDeleteUploaded = async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`https://localhost:7148/api/image/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setUploadedImages(prev => prev.filter(img => img.id !== id));
-    } catch (err) {
-      console.error("Delete failed", err);
-      alert("Failed to delete image");
-    }
+  const handleDeleteUploaded = (id) => {
+    toast(
+      ({ closeToast }) => (
+        <div className="w-[260px] text-center">
+          <div className="text-2xl mb-2">⚠️</div>
+          <p className="text-sm text-gray-700 mb-4">
+            Do you really want to delete this image?
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={closeToast}
+              className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("token");
+                  await axios.delete(`https://localhost:7148/api/image/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  setUploadedImages(prev => prev.filter(img => img.id !== id));
+                  toast.success("Image deleted successfully!");
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Delete failed ❌");
+                }
+                closeToast();
+              }}
+              className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-sm"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      { autoClose: false, closeOnClick: false, draggable: false }
+    );
   };
 
   const handleLogout = () => {
@@ -218,8 +222,7 @@ function UserProfile() {
     navigate("/login");
   };
 
-  const imagesToShow =
-    activeTab === "saved" ? savedImages : uploadedImages;
+  const imagesToShow = activeTab === "saved" ? savedImages : uploadedImages;
 
   return (
     <motion.div
@@ -236,194 +239,234 @@ function UserProfile() {
 
       <div className="flex-1 flex flex-col md:flex-row pt-2 md:pt-4 px-3 md:px-4 gap-4 md:gap-6">
 
-        {/* LEFT SIDEBAR */}
+        {/* ── LEFT SIDEBAR ─────────────────────────────────────── */}
         <motion.div
           initial={{ x: -30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
           className="w-full md:w-[320px] bg-white shadow-xl rounded-2xl p-4 md:p-6 flex flex-col h-auto md:h-[calc(100vh-5rem)]"
         >
-          <div className="flex-1 flex flex-col items-center space-y-6">
+          {/* Edit / Cancel / Done row */}
+          <div className="w-full mb-3">
+            {!isEditing ? (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setTempName(name);
+                    setTempContact(contact);
+                    setIsEditing(true);
+                  }}
+                  className="text-blue-600 font-medium cursor-pointer"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center text-sm font-medium">
+                <button onClick={() => setIsEditing(false)} className="text-gray-600">
+                  Cancel
+                </button>
+                <span className="font-semibold text-gray-800">Edit Profile</span>
+                <button onClick={handleSaveChanges} className="text-blue-600 cursor-pointer">
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
 
-            <div className="relative">
+          {/* ── VIEW MODE ── */}
+          {!isEditing ? (
+            /*
+             * MOBILE: horizontal compact card  |  DESKTOP: centered vertical (unchanged)
+             */
+            <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center">
+
+              {/* Mobile: row layout */}
+              <div className="flex md:hidden w-full items-center gap-4 bg-gray-50 rounded-2xl p-4">
+                <img
+                  src={photo}
+                  alt="User"
+                  className="w-20 h-20 rounded-full object-cover shadow-lg flex-shrink-0 border-2 border-white"
+                />
+                <div className="text-left min-w-0">
+                  <p className="text-base font-bold text-gray-800 truncate">{name}</p>
+                  <p className="text-xs text-gray-500 truncate">{email}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {contact ? contact : "No contact added"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Desktop: original centred layout (hidden on mobile) */}
               <img
                 src={photo}
                 alt="User"
-                className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-lg"
+                className="hidden md:block w-32 h-32 rounded-full object-cover shadow-xl"
               />
-              <label className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-full cursor-pointer">
-                <FiEdit />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setSelectedFile(file);
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setPhoto(reader.result);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </label>
+              <div className="hidden md:block">
+                <p className="text-xl font-bold">{name}</p>
+                <p className="text-gray-500">{email}</p>
+              </div>
+              <div className="hidden md:block w-full bg-gray-50 rounded-xl p-4 text-sm space-y-2">
+                <p><strong>Contact:</strong> {contact ? contact : "Not added"}</p>
+              </div>
             </div>
 
-            {!isEditing ? (
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-center">{name}</p>
-                <FiEdit
-                  className="text-blue-500 cursor-pointer"
-                  onClick={() => setIsEditing(true)}
-                />
-              </div>
-            ) : (
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => setIsEditing(false)}
-                autoFocus
-                className="border rounded-lg px-2 py-1 text-sm"
-              />
-            )}
-
-            {/* EMAIL */}
-            <div className="w-full flex flex-col sm:flex-row gap-2 px-1 md:px-2">
-              <div className="flex items-center gap-2">
-                <FiMail className="text-amber-600 w-5 h-5" />
-                <span className="text-gray-800 font-medium">Email:</span>
-              </div>
-              <input
-                type="text"
-                value={email}
-                readOnly
-                onChange={(e) => setEmail(e.target.value)}
-                className="cursor-not-allowed w-full border border-gray-400 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
-              />
-            </div>
-
-            {/* CONTACT */}
-            <div className="w-full flex flex-col sm:flex-row gap-2 px-1 md:px-2">
-              <div className="flex items-center gap-2">
-                <FiPhone className="text-green-600 w-5 h-5" />
-                <span className="text-gray-800 font-medium">Contact:</span>
-              </div>
-              <input
-                type="text"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                className="w-full border border-gray-400 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-
-            {/* PASSWORD */}
-            <div className="w-full px-1 md:px-2">
-              <div className="flex items-center justify-between mb-2">
-                <div
-                  onClick={() => setShowPasswordBox(true)}
-                  className="flex gap-2 cursor-pointer"
-                >
-                  <FiLock className="text-red-600 w-5 h-5" />
-                  <span className="text-gray-800 font-medium">
-                    Change Password
-                  </span>
-                </div>
-
-                {showPasswordBox && (
-                  <div className="flex gap-3 text-lg">
-                    <button
-                      onClick={handlePasswordSave}
-                      className="text-green-600"
-                    >
-                      ✅
-                    </button>
-
-                    <button
-                      onClick={handlePasswordCancel}
-                      className="text-red-600"
-                    >
-                      ✖
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {showPasswordBox && (
-                <input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-400 rounded-lg px-3 py-2 text-sm"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* BUTTONS */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-full px-4 py-2 rounded-lg bg-green-500 text-white"
-              onClick={handleSaveChanges}
+          ) : (
+            /* ── EDIT MODE (unchanged) ── */
+            <motion.div
+              initial={{ x: 40, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className="flex-1 flex flex-col space-y-5"
             >
-              Save Changes
-            </motion.button>
+              <div className="flex flex-col items-center gap-2">
+                <label className="relative cursor-pointer group">
+                  <img
+                    src={photo}
+                    alt="User"
+                    className="w-24 h-24 rounded-full object-cover shadow-md border-2 border-white"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center text-white text-lg transition">
+                    <FiEdit />
+                  </div>
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => setPhoto(reader.result);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={() => { setPhoto("/profileImage.png"); setSelectedFile(null); }}
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Remove Photo
+                </button>
+              </div>
 
+              <div className="text-sm space-y-3">
+                <div>
+                  <label className="block text-gray-600 mb-1.5 text-xs font-medium">Username</label>
+                  <input
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    className="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 mb-1.5 text-xs font-medium">Contact Number</label>
+                  <input
+                    value={tempContact}
+                    onChange={(e) => setTempContact(e.target.value)}
+                    className="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 mb-1.5 text-xs font-medium">New Password</label>
+                  <input
+                    type="password"
+                    placeholder="Leave blank to keep current"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* LOGOUT */}
+          <div className="flex justify-center mt-6">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white"
+              className="w-fit flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white"
               onClick={handleLogout}
             >
               <FiLogOut /> Logout
             </motion.button>
-
           </div>
         </motion.div>
 
-        {/* RIGHT PANEL */}
+        {/* ── RIGHT PANEL ──────────────────────────────────────── */}
         <motion.div
           initial={{ x: 30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex-1 bg-white shadow-xl rounded-2xl p-3 md:p-4 overflow-hidden h-auto md:h-[calc(100vh-5rem)]"        >
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-gray-200 mb-2 gap-2">
+          className="flex-1 bg-white shadow-xl rounded-2xl p-3 md:p-4 overflow-hidden h-auto md:h-[calc(100vh-5rem)]"
+        >
+          {/*
+           * DESKTOP header: original layout (tabs left, upload button right)
+           * MOBILE header: upload button full-width on top, tabs as a pill switcher below
+           */}
 
-            {/* UPLOAD BUTTON */}
-            <Link to="/upload" className="w-full sm:w-auto order-1 sm:order-2">
+          {/* ── Mobile header ── */}
+          <div className="flex md:hidden flex-col gap-3 mb-3">
+            {/* Upload button — full width */}
+            <Link to="/upload" className="w-full">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="bg-pink-500 text-white px-4 md:px-5 py-2 rounded-xl flex items-center justify-center gap-2 w-full sm:w-auto"
+                whileHover={{ scale: 1.02 }}
+                className="bg-pink-500 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 w-full font-medium"
               >
                 Upload <FiUpload />
               </motion.button>
             </Link>
 
-            {/* TABS */}
-            <div className="flex gap-2 order-2 sm:order-1">
+            {/* Pill tab switcher */}
+            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
               {["saved", "uploaded"].map((tab) => {
                 const isActive = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {tab === "saved" ? "Saved" : "Uploaded"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
+          {/* ── Desktop header (original, hidden on mobile) ── */}
+          <div className="hidden md:flex flex-row justify-between items-end border-b border-gray-200 mb-2 gap-2">
+            <Link to="/upload" className="w-auto order-2">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="bg-pink-500 text-white px-5 py-2 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                Upload <FiUpload />
+              </motion.button>
+            </Link>
+
+            <div className="flex gap-2 order-1">
+              {["saved", "uploaded"].map((tab) => {
+                const isActive = activeTab === tab;
                 return (
                   <motion.button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`relative px-4 md:px-6 py-2 font-semibold capitalize rounded-t-lg transition
-        ${isActive
+                    className={`relative px-6 py-2 font-semibold capitalize rounded-t-lg transition ${
+                      isActive
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg border border-gray-200 border-b-0"
                         : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                      }`}
+                    }`}
                   >
                     {tab === "saved" ? "Saved Images" : "Uploaded Images"}
-
                     {isActive && (
                       <motion.span
                         layoutId="activeTabGlow"
@@ -436,23 +479,27 @@ function UserProfile() {
             </div>
           </div>
 
-          {/* IMAGES */}
+          {/* ── IMAGES GRID ── */}
           <div className="overflow-y-auto overflow-x-hidden h-[calc(100%-3.5rem)]">
+            {(activeTab === "saved" && loadingSaved) ||
+            (activeTab === "uploaded" && loadingUploaded) ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              </div>
 
-            {imagesToShow.length === 0 ? (
+            ) : imagesToShow.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-8 text-gray-500 text-center">
                 <p className="text-lg font-semibold">
-                  {activeTab === "saved"
-                    ? "No saved images yet"
-                    : "No uploaded images yet"}
+                  {activeTab === "saved" ? "No saved images yet" : "No uploaded images yet"}
                 </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 w-full pb-6">
 
+            ) : (
+              <div className="grid grid-cols-2 mt-3 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 w-full pb-6">
                 {imagesToShow.map((img) => {
                   const id = img.id || img.imageId;
-const imageSrc = img.imageUrl;
+                  const imageSrc = img.imageUrl;
+
                   return (
                     <motion.div
                       key={id}
@@ -462,19 +509,25 @@ const imageSrc = img.imageUrl;
                       <img
                         src={imageSrc}
                         alt="img"
-                        className="w-full h-48 md:h-60 object-cover cursor-pointer"
-                        onClick={() =>
-                          navigate(`/image/${id}`, { state: { image: img } })
-                        }
+                        className="w-full h-36 md:h-60 object-cover cursor-pointer"
+                        onClick={() => navigate(`/image/${id}`, { state: { image: img } })}
                       />
 
                       {activeTab === "uploaded" && (
-                        <button
-                          onClick={() => handleDeleteUploaded(id)}
-                          className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 p-2 rounded-full"
-                        >
-                          <FiTrash2 className="w-5 h-5" />
-                        </button>
+                        <div className="absolute top-2 right-2 flex gap-1.5">
+                          <button
+                            onClick={() => navigate("/edit-image", { state: { image: img } })}
+                            className="bg-blue-500 text-white hover:bg-blue-600 p-1.5 rounded-full"
+                          >
+                            <FiEdit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUploaded(id)}
+                            className="bg-red-500 text-white hover:bg-red-600 p-1.5 rounded-full"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </motion.div>
                   );

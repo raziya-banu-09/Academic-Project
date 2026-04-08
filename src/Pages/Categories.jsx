@@ -3,19 +3,21 @@ import { useNavigate } from "react-router-dom";
 import Logo from "../Components/Logo";
 import CloseButton from "../Components/CloseButton";
 import React, { useEffect, useState } from "react";
+import { RiCameraLensAiFill } from "react-icons/ri";
 
 export default function Categories() {
 
   const navigate = useNavigate();
 
-  const handleCategoryClick = (searchKey) => {
+  const handleCategoryClick = (category) => {
     navigate("/home", {
-      state: { category: searchKey }
+      state: {
+        categoryId: category.categoryId,
+        categoryName: category.title
+      }
     });
   };
 
-
-  //add category
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,6 @@ export default function Categories() {
   const fetchCategories = async () => {
     try {
       const response = await fetch("https://localhost:7148/api/category/all");
-
       const data = await response.json();
 
       const formatted = data.map(c => ({
@@ -45,67 +46,73 @@ export default function Categories() {
     }
   };
 
-
   return (
-    <div className="min-h-screen max-w-full flex flex-col bg-white items-center">
-      {/* Header */}
+    <div className="min-h-screen w-full flex flex-col items-center bg-gradient-to-br from-blue-50 via-white to-pink-50 relative overflow-hidden">
+
+      <div className="absolute top-[-100px] left-[-100px] w-[300px] h-[300px] bg-pink-300 opacity-30 blur-3xl rounded-full"></div>
+      <div className="absolute bottom-[-100px] right-[-100px] w-[300px] h-[300px] bg-blue-300 opacity-30 blur-3xl rounded-full"></div>
+
       <header className="m-0 bg-white shadow-sm w-full sticky top-0 z-50 flex justify-between items-center ">
         <Logo />
         <CloseButton />
       </header>
+
       <motion.div
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1 }}
-        className="text-center md:mb-4 max-w-2xl"
+        transition={{ duration: 0.8 }}
+        className="text-center mt-6 mb-6 max-w-2xl px-4"
       >
-        <h1 className="text-2xl sm:text-3xl font-semibold text-blue-900  py-3">
-          Explore by category & discover ideas you love.
+        <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-pink-500 bg-clip-text text-transparent">
+          Discover Creative Categories
         </h1>
+
+        <p className="text-gray-600 mt-3 text-sm sm:text-base">
+          Explore curated collections and find inspiration tailored to your style.
+        </p>
       </motion.div>
-     
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 overflow-hidden sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-8 mb-7 max-w-7xl px-5">
-        {categories.map((ctgry) => (
-          <motion.div
-            key={ctgry.categoryId}
-            onClick={() => handleCategoryClick(ctgry.searchKey)}
+      {loading ? (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+) : (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-8 mb-10 max-w-7xl px-5 z-10">
 
-            className="relative rounded-2xl overflow-hidden shadow-md group cursor-pointer"
-            initial={{ opacity: 0, scale: 0.9, y: 40 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.9 }}
-            whileHover={{ scale: 1.05, rotate: 1 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <img
-              src={ctgry.image}
-              alt={ctgry.title}
-              loading="lazy"
-              className="w-full h-72 object-cover transform group-hover:scale-110 transition duration-700 ease-in-out"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-5">
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-lg sm:text-xl font-bold text-white drop-shadow"
-              >
-                {ctgry.title}
-              </motion.p>
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-sm font-semibold text-white drop-shadow"
-              >
-                {ctgry.subtitle}
-              </motion.h2>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+    {categories.map((ctgry) => (
+      <motion.div
+        key={ctgry.categoryId}
+        onClick={() => handleCategoryClick(ctgry)}
+        className="relative rounded-3xl overflow-hidden shadow-lg group cursor-pointer border border-white/40 backdrop-blur-sm hover:shadow-2xl transition duration-300"
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.97 }}
+      >
+        <img
+          src={ctgry.image}
+          alt={ctgry.title}
+          loading="lazy"
+          className="w-full h-72 object-cover transform group-hover:scale-110 transition duration-700 ease-in-out"
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-5">
+
+          <p className="text-lg sm:text-xl font-bold text-white drop-shadow">
+            {ctgry.title}
+          </p>
+
+          <h2 className="text-sm font-semibold text-white/90 drop-shadow">
+            {ctgry.subtitle}
+          </h2>
+
+        </div>
+      </motion.div>
+    ))}
+
+  </div>
+)}
     </div>
   );
-} 
+}

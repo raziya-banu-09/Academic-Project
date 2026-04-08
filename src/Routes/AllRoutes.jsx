@@ -28,6 +28,7 @@ const AllRoutes = () => {
         <Route path="/upload" element={<ProtectedRoute><ImageUpload /></ProtectedRoute>} />
         <Route path="/image/:id" element={<ProtectedRoute><ImageDetails /></ProtectedRoute>} />
         <Route path="/user-profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+        <Route path="/edit-image" element={<ImageUpload />} />
       </Routes>
     </Router>
   )

@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import Logo from "../Components/Logo";
 import Button from "../Components/Button";
 import axios from "axios";
-
+import { toast } from "react-toastify";
 export default function Login() {
 
   const [username, setUsername] = useState("");
@@ -22,30 +22,32 @@ export default function Login() {
       setError("Enter details to login");
       return;
     }
-
     try {
       const response = await axios.post(
         "https://localhost:7148/api/User/login",
         {
-          username: username,
-          password: password
+          username,
+          password
         }
       );
 
-      // store JWT token
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("username", response.data.username);
       localStorage.setItem("role", response.data.role);
 
-      navigate("/home");
+      toast.success("Login Successful 🚀", {
+        autoClose: 1500,
+        onClose: () => navigate("/home"),
+      });
 
     } catch (err) {
       if (err.response?.status === 401) {
-        setError("Invalid credentials");
+        toast.error("Invalid Credentials ❌");
       } else {
-        setError("Login failed");
+        toast.error("Login Failed ❌");
       }
     }
+
   };
 
   return (

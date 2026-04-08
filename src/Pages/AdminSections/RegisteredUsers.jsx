@@ -16,67 +16,104 @@ export default function RegisteredUsers() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) throw new Error("Failed to fetch users");
-
       const data = await response.json();
-      console.log("Fetched users:", data);
 
-      // Ensure users is always an array
-      setUsers(Array.isArray(data) ? data : [data]);
-
+      setUsers(
+        data.map((u) => ({
+          id: u.userId,
+          username: u.username,
+          email: u.email,
+          profileImage: u.profileImage,
+        }))
+      );
     } catch (error) {
       console.error(error);
-      alert("Failed to fetch users");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Delete this user?")) return;
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://localhost:7148/api/User/${userId}`, {
+      await fetch(`https://localhost:7148/api/User/${userId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Failed to delete user");
-      setUsers((prev) => prev.filter((user) => user.id !== userId));
+
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (error) {
       console.error(error);
-      alert("Failed to delete user");
     }
   };
 
   if (loading)
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
 
   return (
-    <div className="registered-users p-4">
-      <h2 className="text-xl font-bold mb-4 text-gray-700">Registered Users</h2>
+    <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+
+      <h2 className="text-2xl font-bold mb-6 text-pink-500">
+        Registered Users
+      </h2>
 
       {users.length === 0 ? (
-        <div className="text-gray-500 text-center py-10">No users found.</div>
+        <p className="text-center text-gray-500">No users found</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
+
           {users.map((user) => (
             <div
               key={user.id}
-              className="flex flex-col justify-between p-4 bg-white rounded-2xl shadow hover:shadow-lg transition"
+              className="
+                flex flex-col sm:flex-row 
+                sm:items-center sm:justify-between
+                gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition
+              "
             >
-              <div>
-                <p className="font-semibold text-gray-800 text-lg break-words">{user.username}</p>
-                <p className="text-gray-500 text-sm break-words">{user.email}</p>
+
+              {/* USER INFO */}
+              <div className="flex items-center gap-3">
+
+                <img
+                  src={user.profileImage || "/profileImage.png"}
+                  alt="profile"
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-800 truncate">
+                    {user.username}
+                  </p>
+                  <p className="text-sm text-gray-500 truncate">
+                    {user.email}
+                  </p>
+                </div>
+
               </div>
 
+              {/* DELETE BUTTON */}
               <button
                 onClick={() => deleteUser(user.id)}
-                className="mt-3 flex items-center justify-center gap-2 px-3 py-1 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 transition shadow"
+                className="
+                  w-full sm:w-auto
+                  flex items-center justify-center gap-2
+                  px-4 py-2 bg-rose-500 text-white text-sm
+                  rounded-lg hover:bg-rose-600 transition
+                "
               >
                 <FiTrash2 /> Delete
               </button>
+
             </div>
           ))}
+
         </div>
       )}
     </div>

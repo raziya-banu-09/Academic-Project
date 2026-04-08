@@ -5,7 +5,8 @@ import Logo from "../Components/Logo";
 import { Link, useNavigate } from "react-router-dom";
 import { FiUploadCloud, FiX } from "react-icons/fi";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode";
+import { toast } from "react-toastify";
+import { useLocation } from "react-router-dom";
 
 const ImageUpload = () => {
   const fileInputRef = useRef(null);
@@ -18,7 +19,18 @@ const ImageUpload = () => {
   const [category, setCategory] = useState("");
   const [error, setError] = useState("");
   const [categoriesList, setCategoriesList] = useState([]);
+  const location = useLocation();
+  const editImage = location.state?.image;
+  const isEditMode = !!editImage;
 
+  useEffect(() => {
+    if (isEditMode) {
+      setPreviewUrl(editImage.imageUrl);
+      setTitle(editImage.title || "");
+      setDescription(editImage.description || "");
+      setCategory(editImage.categoryId || "");
+    }
+  }, [editImage]);
 
   const handleDivClick = () => {
     fileInputRef.current.click();
@@ -43,63 +55,103 @@ const ImageUpload = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const urlToFile = async (url, filename) => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type });
+  };
+
   const handleUpload = async () => {
-  if (!selectedFile) return setError("Please select an image.");
-  if (!title.trim() || !description.trim() || !category)
-    return setError("Please fill all the details.");
-
-  try {
-    const token = localStorage.getItem("token");
-
-    // ✅ GET USER ID FROM PROFILE API (SAFE WAY)
-    const userRes = await axios.get(
-      "https://localhost:7148/api/User/profile",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const userId = userRes.data.userId; // ✅ IMPORTANT
-
-    console.log("USER ID:", userId);
-
-    const formData = new FormData();
-    formData.append("File", selectedFile);
-    formData.append("Title", title);
-    formData.append("Description", description);
-    formData.append("CategoryId", Number(category)); // ensure number
-    formData.append("UserId", userId);
-
-    await axios.post(
-      "https://localhost:7148/api/image/upload",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    alert("Image uploaded successfully!");
-    navigate("/user-profile");
-
-  } catch (err) {
-    console.error("Upload failed", err.response?.data);
-
-    const backendError = err.response?.data;
-
-    if (backendError?.errors) {
-      const messages = Object.values(backendError.errors)
-        .flat()
-        .join(", ");
-      setError(messages);
-    } else {
-      setError(backendError?.title || "Upload failed");
+    if (!previewUrl) {
+      return setError("Please select an image.");
     }
-  }
-};
+
+    try {
+      const token = localStorage.getItem("token");
+
+      // ✅ Get user ID
+      const userRes = await axios.get(
+        "https://localhost:7148/api/User/profile",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const userId = userRes.data.userId;
+
+      let fileToUpload = selectedFile;
+
+      // ✅ If no new image selected → reuse old image
+      if (!fileToUpload && previewUrl) {
+        fileToUpload = await urlToFile(previewUrl, "existing-image.jpg");
+      }
+
+      // ✅ Prepare form data
+      const formData = new FormData();
+      formData.append("File", fileToUpload);
+      formData.append("Title", title || "");
+      formData.append("Description", description || "");
+      formData.append("CategoryId", Number(category) || 0);
+      formData.append("UserId", userId);
+
+      // =============================
+      // 🔥 EDIT MODE
+      // =============================
+      if (isEditMode) {
+
+        // 1️⃣ Upload new (edited) image
+        await axios.post(
+          "https://localhost:7148/api/image/upload",
+          formData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        // 2️⃣ Delete old image (avoid duplicates)
+        await axios.delete(
+          `https://localhost:7148/api/image/${editImage.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        toast.success("Image updated & sent for approval!");
+
+      } else {
+
+        // =============================
+        // 🟢 NORMAL UPLOAD
+        // =============================
+        await axios.post(
+          "https://localhost:7148/api/image/upload",
+          formData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        toast.success("Image uploaded successfully!");
+      }
+
+      // ✅ Redirect
+      navigate("/user-profile");
+
+    } catch (err) {
+      console.error("FULL ERROR:", err.response);
+
+      const backendError = err.response?.data;
+
+      if (backendError?.errors) {
+        const messages = Object.values(backendError.errors)
+          .flat()
+          .join(", ");
+        toast.error(messages);
+      } else {
+        toast.error(backendError?.title || "Operation failed");
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -108,8 +160,8 @@ const ImageUpload = () => {
 
         setCategoriesList(
           res.data.map((c, index) => ({
-            id: c.id || c.Id || index+1,       
-            title: c.title || c.Title       
+            id: c.id || c.Id || index + 1,
+            title: c.title || c.Title
           }))
         );
 
@@ -224,7 +276,7 @@ const ImageUpload = () => {
                     }}
                     className="w-full mt-1 p-2.5 rounded-lg border border-gray-300 bg-neutral-100"
                   >
-                    <option value="">Select category</option>
+                    <option value="">-- Select --</option>
 
                     {categoriesList.map((cat, index) => (
                       <option key={cat.id || index} value={cat.id}>
@@ -237,27 +289,29 @@ const ImageUpload = () => {
                 {error && <p className="text-red-500 text-sm">{error}</p>}
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-center md:justify-end gap-3 sm:gap-6 mt-8 md:mt-8">
+              <div className="flex flex-row md:justify-end gap-3 mt-8 w-full">
+  
+  {/* Upload Button */}
+  <Button
+    onClick={handleUpload}
+    className="w-1/2 md:w-auto flex items-center justify-center gap-2 rounded-xl bg-rose-500 text-white px-4 py-2.5 text-sm"
+  >
+    <FiUploadCloud />
+    {isEditMode ? "Update" : "Upload"}
+  </Button>
 
-                <Button
-                  onClick={handleUpload}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-rose-500 text-white px-6 py-2.5 text-sm"
-                >
-                  <FiUploadCloud />
-                  Upload
-                </Button>
+  {/* Cancel Button */}
+  <Link to="/user-profile" className="w-1/2 md:w-auto">
+    <Button
+      onClick={handleCancel}
+      className="w-full flex items-center justify-center gap-2 rounded-xl bg-neutral-200 text-gray-800 px-4 py-2.5 text-sm"
+    >
+      <FiX />
+      Cancel
+    </Button>
+  </Link>
 
-                <Link to="/user-profile" className="w-full sm:w-auto">
-                  <Button
-                    onClick={handleCancel}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-neutral-200 text-gray-800 px-6 py-2.5 text-sm"
-                  >
-                    <FiX />
-                    Cancel
-                  </Button>
-                </Link>
-
-              </div>
+</div>
 
             </div>
           </div>

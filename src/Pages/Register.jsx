@@ -7,6 +7,7 @@ import Logo from "../Components/Logo";
 import Button from "../Components/Button";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 export default function Register() {
 
@@ -35,17 +36,28 @@ export default function Register() {
       const response = await axios.post(
         "https://localhost:7148/api/User/register",
         {
-          username: username,
-          email: email,
-          password: password
+          username,
+          email,
+          password
         }
       );
 
-      navigate("/login");
+      toast.success("Registration Successful 🎉", {
+        autoClose: 1500,
+        onClose: () => navigate("/login"),
+      });
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
 
     } catch (err) {
       console.log(err);
-      setError("Registration failed");
+
+      if (err.response && err.response.data && err.response.data.message) {
+        toast.error(err.response.data.message);
+      } else {
+        toast.error("Registration Failed ❌");
+      }
     }
   };
 
