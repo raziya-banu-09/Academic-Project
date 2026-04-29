@@ -276,9 +276,7 @@ function UserProfile() {
 
           {/* ── VIEW MODE ── */}
           {!isEditing ? (
-            /*
-             * MOBILE: horizontal compact card  |  DESKTOP: centered vertical (unchanged)
-             */
+           
             <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center">
 
               {/* Mobile: row layout */}
@@ -387,7 +385,7 @@ function UserProfile() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-fit flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white"
+              className="w-fit flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-red-400 text-white"
               onClick={handleLogout}
             >
               <FiLogOut /> Logout

@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 
 const ImageUpload = () => {
+ 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -68,8 +69,6 @@ const ImageUpload = () => {
 
     try {
       const token = localStorage.getItem("token");
-
-      // ✅ Get user ID
       const userRes = await axios.get(
         "https://localhost:7148/api/User/profile",
         {
@@ -81,12 +80,10 @@ const ImageUpload = () => {
 
       let fileToUpload = selectedFile;
 
-      // ✅ If no new image selected → reuse old image
       if (!fileToUpload && previewUrl) {
         fileToUpload = await urlToFile(previewUrl, "existing-image.jpg");
       }
 
-      // ✅ Prepare form data
       const formData = new FormData();
       formData.append("File", fileToUpload);
       formData.append("Title", title || "");
@@ -94,12 +91,7 @@ const ImageUpload = () => {
       formData.append("CategoryId", Number(category) || 0);
       formData.append("UserId", userId);
 
-      // =============================
-      // 🔥 EDIT MODE
-      // =============================
       if (isEditMode) {
-
-        // 1️⃣ Upload new (edited) image
         await axios.post(
           "https://localhost:7148/api/image/upload",
           formData,
@@ -108,7 +100,6 @@ const ImageUpload = () => {
           }
         );
 
-        // 2️⃣ Delete old image (avoid duplicates)
         await axios.delete(
           `https://localhost:7148/api/image/${editImage.id}`,
           {
@@ -119,10 +110,6 @@ const ImageUpload = () => {
         toast.success("Image updated & sent for approval!");
 
       } else {
-
-        // =============================
-        // 🟢 NORMAL UPLOAD
-        // =============================
         await axios.post(
           "https://localhost:7148/api/image/upload",
           formData,
@@ -133,8 +120,6 @@ const ImageUpload = () => {
 
         toast.success("Image uploaded successfully!");
       }
-
-      // ✅ Redirect
       navigate("/user-profile");
 
     } catch (err) {
@@ -177,7 +162,6 @@ const ImageUpload = () => {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Logo />
-
       <div className="flex justify-center px-4 sm:px-8 mt-4 mb-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -186,8 +170,6 @@ const ImageUpload = () => {
           className="bg-white shadow-xl rounded-2xl p-4 sm:p-8 w-full max-w-6xl min-h-[480px]"
         >
           <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-
-            {/* LEFT : UPLOAD */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="md:w-1/2 flex items-center justify-center"
@@ -230,11 +212,8 @@ const ImageUpload = () => {
               />
             </motion.div>
 
-            {/* RIGHT : FORM */}
             <div className="md:w-1/2 flex flex-col justify-between m-0 md:m-4">
-
               <div className="space-y-4">
-
                 <div>
                   <label className="font-semibold text-gray-700 text-sm">
                     Title
@@ -290,28 +269,26 @@ const ImageUpload = () => {
               </div>
 
               <div className="flex flex-row md:justify-end gap-3 mt-8 w-full">
-  
-  {/* Upload Button */}
-  <Button
-    onClick={handleUpload}
-    className="w-1/2 md:w-auto flex items-center justify-center gap-2 rounded-xl bg-rose-500 text-white px-4 py-2.5 text-sm"
-  >
-    <FiUploadCloud />
-    {isEditMode ? "Update" : "Upload"}
-  </Button>
 
-  {/* Cancel Button */}
-  <Link to="/user-profile" className="w-1/2 md:w-auto">
-    <Button
-      onClick={handleCancel}
-      className="w-full flex items-center justify-center gap-2 rounded-xl bg-neutral-200 text-gray-800 px-4 py-2.5 text-sm"
-    >
-      <FiX />
-      Cancel
-    </Button>
-  </Link>
+                <Button
+                  onClick={handleUpload}
+                  className="w-1/2 md:w-auto flex items-center justify-center gap-2 rounded-xl bg-rose-500 text-white px-4 py-2.5 text-sm"
+                >
+                  <FiUploadCloud />
+                  {isEditMode ? "Update" : "Upload"}
+                </Button>
 
-</div>
+                <Link to="/user-profile" className="w-1/2 md:w-auto">
+                  <Button
+                    onClick={handleCancel}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-neutral-200 text-gray-800 px-4 py-2.5 text-sm"
+                  >
+                    <FiX />
+                    Cancel
+                  </Button>
+                </Link>
+
+              </div>
 
             </div>
           </div>

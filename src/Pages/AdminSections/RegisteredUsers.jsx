@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { FiTrash2 } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 export default function RegisteredUsers() {
   const [users, setUsers] = useState([]);
@@ -33,20 +34,66 @@ export default function RegisteredUsers() {
     }
   };
 
-  const deleteUser = async (userId) => {
-    if (!window.confirm("Delete this user?")) return;
+  const deleteUser = (userId) => {
+    toast(
+      ({ closeToast }) => (
+        <div className="w-[260px] text-center">
+          <div className="text-2xl mb-2">⚠️</div>
 
-    try {
-      const token = localStorage.getItem("token");
-      await fetch(`https://localhost:7148/api/User/${userId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+          <p className="text-sm text-gray-700 mb-4">
+            Do you really want to delete this user?
+          </p>
 
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-    } catch (error) {
-      console.error(error);
-    }
+          <div className="flex justify-center gap-3">
+
+            {/* CANCEL */}
+            <button
+              onClick={closeToast}
+              className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm"
+            >
+              Cancel
+            </button>
+
+            {/* DELETE */}
+            <button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("token");
+
+                  await fetch(
+                    `https://localhost:7148/api/User/${userId}`,
+                    {
+                      method: "DELETE",
+                      headers: { Authorization: `Bearer ${token}` },
+                    }
+                  );
+
+                  setUsers((prev) =>
+                    prev.filter((u) => u.id !== userId)
+                  );
+
+                  toast.success("User deleted successfully!");
+                } catch (error) {
+                  console.error(error);
+                  toast.error("Delete failed ❌");
+                }
+
+                closeToast();
+              }}
+              className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-sm"
+            >
+              Delete
+            </button>
+
+          </div>
+        </div>
+      ),
+      {
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+      }
+    );
   };
 
   if (loading)

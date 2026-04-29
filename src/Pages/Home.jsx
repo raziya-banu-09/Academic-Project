@@ -76,7 +76,6 @@ const Home = () => {
           </div>
 
           {/* Search Bar */}
-          {/* Mobile: takes all space between left edge and 3-dots; Desktop: centered absolutely */}
           <div className="flex-1 md:flex-none md:absolute md:left-1/2 md:transform md:-translate-x-1/2 md:w-[40%]">
             <SearchBar
               value={searchTerm}
@@ -90,7 +89,6 @@ const Home = () => {
             />
           </div>
 
-          {/* Right: Desktop links + avatar */}
           <div className="hidden md:flex items-center space-x-10 flex-shrink-0">
             <Link to="/categories" className="relative group text-blue-500 font-bold">
               Categories
@@ -110,7 +108,6 @@ const Home = () => {
             </Link>
           </div>
 
-          {/* Mobile: 3-dots */}
           <div className="md:hidden relative flex-shrink-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -122,7 +119,6 @@ const Home = () => {
             <AnimatePresence>
               {isMobileMenuOpen && (
                 <>
-                  {/* Backdrop */}
                   <motion.div
                     className="fixed inset-0 z-[998] bg-black/30 backdrop-blur-sm"
                     initial={{ opacity: 0 }}

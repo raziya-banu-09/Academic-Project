@@ -166,10 +166,9 @@ const ImageDetails = () => {
     }
   };
 
-  // ---------------- LOADING STATE ----------------
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-pink-50 to-blue-50">
+      <div className="min-h-screen flex flex-col items-center justify-center overflow-x-hidden bg-gradient-to-br from-slate-50 via-pink-50 to-blue-50">
         <div className="relative w-14 h-14">
           <div className="absolute inset-0 rounded-full border-4 border-pink-200"></div>
           <div className="absolute inset-0 rounded-full border-4 border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
@@ -179,7 +178,6 @@ const ImageDetails = () => {
     );
   }
 
-  // ---------------- ERROR STATE ----------------
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-pink-50 to-blue-50 px-4">
@@ -200,14 +198,13 @@ const ImageDetails = () => {
     );
   }
 
-  // ---------------- MAIN UI ----------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-pink-50/30 to-blue-50/40">
 
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 w-full sticky top-0 z-50 flex justify-between items-center shadow-sm">
         <Logo />
-        <CloseButton />
+        <CloseButton/>
       </header>
 
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
@@ -220,11 +217,11 @@ const ImageDetails = () => {
             <div className="relative bg-gradient-to-br from-slate-100 to-slate-200/60 flex flex-col">
 
               {/* Image */}
-              <div className="flex-1 flex items-center justify-center p-4 sm:p-6 min-h-[50vw] sm:min-h-[340px] lg:min-h-[520px]">
+              <div className="flex items-center justify-center p-2 sm:p-4">
                 <img
                   src={imageData.imageUrl}
-                  className="w-full h-full object-contain rounded-2xl max-h-[55vh] lg:max-h-[60vh] drop-shadow-xl"
-                  alt={imageData.title || "Image"}
+                  className="max-w-full max-h-[65vh] object-contain rounded drop-shadow-xl"
+                  alt=""
                 />
               </div>
 

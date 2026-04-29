@@ -123,7 +123,7 @@ export default function LandingPage() {
       <motion.footer
         className="bg-white shadow-inner py-3 text-center text-gray-500 text-sm sm:text-base"
         initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}   // ✅ Slide-up footer
+        animate={{ opacity: 1, y: 0 }}  
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
         © 2025 PixHub — Crafted with ❤️
