@@ -3,14 +3,9 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import { Link } from "react-router-dom";
 import Loader from "../Components/Loader";
 
-// ─── Module-level cache — lives for the entire browser session ────────────────
-// Survives component unmounts so navigating away & back is instant
-const galleryCache = {};
-// shape: { [cacheKey]: { images: [], totalCount: number } }
 
-// ─── Seeded shuffle (Fisher-Yates) ────────────────────────────────────────────
-// Seed = today's date XOR image count → stable order within a day,
-// reshuffles automatically whenever a new image is added
+const galleryCache = {};
+
 function seededShuffle(arr, seed) {
   const a = [...arr];
   let s = seed >>> 0;
@@ -27,7 +22,6 @@ function getDailySeed(count = 0) {
   return (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()) ^ count;
 }
 
-// ─── Skeleton card ────────────────────────────────────────────────────────────
 function SkeletonCard({ height }) {
   return (
     <div
@@ -39,18 +33,16 @@ function SkeletonCard({ height }) {
 
 const SKELETON_HEIGHTS = [160, 200, 240, 180, 220, 260, 150, 210];
 
-// ─── Main component ───────────────────────────────────────────────────────────
 const ImageGallery = ({ searchTerm, categoryId }) => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const requestId   = useRef(0);   // cancels stale async chains
-  const bgRunning   = useRef(false); // prevents duplicate background refreshes
-  const initialized = useRef(false); // true once first data has been received
+  const requestId   = useRef(0);   
+  const bgRunning   = useRef(false); 
+  const initialized = useRef(false); 
 
   const cacheKey = `${searchTerm || "all"}-${categoryId || "all"}`;
 
-  // ── URL builder ──────────────────────────────────────────────────────────
   const buildUrl = useCallback((pageNum) => {
     if (searchTerm)
       return `https://localhost:7148/api/Image/search?category=${searchTerm.trim()}&page=${pageNum}&pageSize=20`;
@@ -59,7 +51,6 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
     return `https://localhost:7148/api/Image?page=${pageNum}&pageSize=20`;
   }, [searchTerm, categoryId]);
 
-  // ── Fetch all pages sequentially, call onFirstPage after page 1 ──────────
   const fetchAllPages = useCallback(async (reqId, onFirstPage = null) => {
     const seenIds = new Set();
     const all     = [];
@@ -67,7 +58,7 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
     let total     = Infinity;
 
     while (seenIds.size < total) {
-      if (reqId !== requestId.current) return null; // request was superseded
+      if (reqId !== requestId.current) return null; 
 
       let data;
       try {
@@ -77,8 +68,8 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
         break;
       }
 
-      const batch     = data.data ?? [];
-      total           = data.totalCount ?? 0;
+      const batch  = data.data ?? [];
+      total = data.totalCount ?? 0;
 
       if (batch.length === 0) break;
 
@@ -90,7 +81,6 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
 
       all.push(...unique);
 
-      // Surface first page immediately for fast perceived load
       if (pageNum === 1 && onFirstPage) onFirstPage(unique);
 
       if (seenIds.size >= total) break;
@@ -101,17 +91,14 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
     return { images: all, totalCount: all.length };
   }, [buildUrl]);
 
-  // ── Effect: runs when searchTerm or categoryId changes ──────────────────
   useEffect(() => {
     const cached = galleryCache[cacheKey];
 
     if (cached) {
-      // ── CACHE HIT: show instantly ──────────────────────────────────────
       initialized.current = true;
       setImages(cached.images);
       setLoading(false);
 
-      // Then do a silent background refresh to catch new additions
       if (bgRunning.current) return;
       bgRunning.current = true;
 
@@ -122,7 +109,6 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
         if (!result) return;
 
         if (result.totalCount !== cached.totalCount) {
-          // New images were added — reshuffle and update
           const shuffled = seededShuffle(result.images, getDailySeed(result.totalCount));
           galleryCache[cacheKey] = { images: shuffled, totalCount: result.totalCount };
           setImages(shuffled);
@@ -132,14 +118,12 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
       return;
     }
 
-    // ── CACHE MISS: fresh fetch ────────────────────────────────────────────
     const reqId = ++requestId.current;
     initialized.current = false;
     setLoading(true);
     setImages([]);
 
     fetchAllPages(reqId, (firstPage) => {
-      // First 20 images appear immediately — no waiting for all pages
       initialized.current = true;
       setImages(firstPage);
       setLoading(false);
@@ -151,10 +135,8 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
       setImages(shuffled);
       setLoading(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, categoryId]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
   if (!initialized.current && images.length === 0) {
     return (
       <div className="columns-2 md:columns-3 lg:columns-4 p-4 bg-[#fafafa]" style={{ columnGap: "1rem" }}>
@@ -183,8 +165,7 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
   }
 
   return (
-    // hasMore is always false — we load everything upfront.
-    // InfiniteScroll is kept for the loader UI only.
+    
     <InfiniteScroll
       dataLength={images.length}
       next={() => {}}
@@ -207,13 +188,11 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
   );
 };
 
-// ─── ImageCard ────────────────────────────────────────────────────────────────
 function ImageCard({ img, priority }) {
   const [loaded, setLoaded] = useState(false);
   const imgRef = useRef(null);
 
   useEffect(() => {
-    // Handle already-cached browser images (no onLoad fires for these)
     if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
       setLoaded(true);
     }

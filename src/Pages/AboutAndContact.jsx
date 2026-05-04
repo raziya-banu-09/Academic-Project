@@ -93,5 +93,6 @@ export default function AboutAndContact() {
       </motion.section>
     </div>
     </div>
+   
   );
 }
