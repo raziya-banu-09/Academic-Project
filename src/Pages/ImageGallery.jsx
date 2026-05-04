@@ -1,10 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import InfiniteScroll from "react-infinite-scroll-component";
 import { Link } from "react-router-dom";
 import Loader from "../Components/Loader";
 
-
 const galleryCache = {};
+const cacheExpiryTime = 30_000;
+const pageSize  = 20;
+const pollInterval = 30_000;
+
+function isCacheValid(entry) {
+  return entry && Date.now() - entry.timestamp < cacheExpiryTime;
+}
 
 function seededShuffle(arr, seed) {
   const a = [...arr];
@@ -35,111 +40,159 @@ const SKELETON_HEIGHTS = [160, 200, 240, 180, 220, 260, 150, 210];
 
 const ImageGallery = ({ searchTerm, categoryId }) => {
   const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [fetchingAll, setFetchingAll] = useState(false);
 
-  const requestId   = useRef(0);   
-  const bgRunning   = useRef(false); 
-  const initialized = useRef(false); 
+  const reqIdRef = useRef(0);
+  const pollTimerRef = useRef(null);
 
   const cacheKey = `${searchTerm || "all"}-${categoryId || "all"}`;
 
-  const buildUrl = useCallback((pageNum) => {
-    if (searchTerm)
-      return `https://localhost:7148/api/Image/search?category=${searchTerm.trim()}&page=${pageNum}&pageSize=20`;
-    if (categoryId)
-      return `https://localhost:7148/api/Image/gallery-by-category?categoryId=${categoryId}&page=${pageNum}&pageSize=20`;
-    return `https://localhost:7148/api/Image?page=${pageNum}&pageSize=20`;
-  }, [searchTerm, categoryId]);
+  const buildUrl = useCallback(
+    (pageNum) => {
+      const base = "https://localhost:7148/api/Image";
+      if (searchTerm)
+        return `${base}/search?category=${encodeURIComponent(searchTerm.trim())}&page=${pageNum}&pageSize=${pageSize }`;
+      if (categoryId)
+        return `${base}/gallery-by-category?categoryId=${categoryId}&page=${pageNum}&pageSize=${pageSize }`;
+      return `${base}?page=${pageNum}&pageSize=${pageSize }`;
+    },
+    [searchTerm, categoryId]
+  );
 
-  const fetchAllPages = useCallback(async (reqId, onFirstPage = null) => {
-    const seenIds = new Set();
-    const all     = [];
-    let pageNum   = 1;
-    let total     = Infinity;
+  // Fetches every page sequentially
+  const fetchAllPages = useCallback(
+    async (reqId, onFirstPage) => {
+      const seenIds = new Set();
+      const all = [];
+      let pageNum = 1;
+      let totalCount = Infinity;
 
-    while (seenIds.size < total) {
-      if (reqId !== requestId.current) return null; 
+      while (all.length < totalCount) {
+        if (reqId !== reqIdRef.current) return null;
 
-      let data;
-      try {
-        const res = await fetch(buildUrl(pageNum));
-        data = await res.json();
-      } catch {
-        break;
+        let data;
+        try {
+          const res = await fetch(buildUrl(pageNum));
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          data = await res.json();
+        } catch (err) {
+          console.error(`Page ${pageNum} fetch error:`, err);
+          break;
+        }
+
+        const batch = data.data ?? [];
+        totalCount = data.totalCount ?? 0;
+
+        if (batch.length === 0) break;
+
+        const unique = batch.filter((img) => {
+          if (seenIds.has(img.imageId)) return false;
+          seenIds.add(img.imageId);
+          return true;
+        });
+
+        all.push(...unique);
+
+        // Immediately show page 1 so the user doesn't wait for all pages
+        if (pageNum === 1 && onFirstPage) {
+          onFirstPage(unique, totalCount);
+        }
+
+        if (seenIds.size >= totalCount || batch.length < pageSize ) break;
+
+        pageNum++;
       }
 
-      const batch  = data.data ?? [];
-      total = data.totalCount ?? 0;
+      if (reqId !== reqIdRef.current) return null;
+      return { images: all, totalCount: all.length };
+    },
+    [buildUrl]
+  );
 
-      if (batch.length === 0) break;
+  const loadGallery = useCallback(
+    async (reqId) => {
+      // Serve from valid cache immediately
+      const cached = galleryCache[cacheKey];
+      if (isCacheValid(cached)) {
+        setImages(cached.images);
+        setInitialized(true);
+        return;
+      }
 
-      const unique = batch.filter(img => {
-        if (seenIds.has(img.imageId)) return false;
-        seenIds.add(img.imageId);
-        return true;
-      });
+      setInitialized(false);
+      setImages([]);
+      setFetchingAll(true);
 
-      all.push(...unique);
-
-      if (pageNum === 1 && onFirstPage) onFirstPage(unique);
-
-      if (seenIds.size >= total) break;
-      pageNum++;
-    }
-
-    if (reqId !== requestId.current) return null;
-    return { images: all, totalCount: all.length };
-  }, [buildUrl]);
-
-  useEffect(() => {
-    const cached = galleryCache[cacheKey];
-
-    if (cached) {
-      initialized.current = true;
-      setImages(cached.images);
-      setLoading(false);
-
-      if (bgRunning.current) return;
-      bgRunning.current = true;
-
-      const bgId = ++requestId.current;
-
-      fetchAllPages(bgId).then(result => {
-        bgRunning.current = false;
-        if (!result) return;
-
-        if (result.totalCount !== cached.totalCount) {
-          const shuffled = seededShuffle(result.images, getDailySeed(result.totalCount));
-          galleryCache[cacheKey] = { images: shuffled, totalCount: result.totalCount };
-          setImages(shuffled);
+      const result = await fetchAllPages(reqId, (firstPage) => {
+        if (reqId === reqIdRef.current) {
+          setImages(firstPage);
+          setInitialized(true);
         }
       });
 
-      return;
-    }
-
-    const reqId = ++requestId.current;
-    initialized.current = false;
-    setLoading(true);
-    setImages([]);
-
-    fetchAllPages(reqId, (firstPage) => {
-      initialized.current = true;
-      setImages(firstPage);
-      setLoading(false);
-    }).then(result => {
-      if (!result) return;
+      if (!result) {
+        if (reqId === reqIdRef.current) setFetchingAll(false);
+        return;
+      }
 
       const shuffled = seededShuffle(result.images, getDailySeed(result.totalCount));
-      galleryCache[cacheKey] = { images: shuffled, totalCount: result.totalCount };
-      setImages(shuffled);
-      setLoading(false);
-    });
-  }, [searchTerm, categoryId]);
 
-  if (!initialized.current && images.length === 0) {
+      galleryCache[cacheKey] = {
+        images: shuffled,
+        totalCount: result.totalCount,
+        timestamp: Date.now(),
+      };
+
+      if (reqId === reqIdRef.current) {
+        setImages(shuffled);
+        setInitialized(true);
+        setFetchingAll(false);
+      }
+    },
+    [cacheKey, fetchAllPages]
+  );
+
+  const pollForNewImages = useCallback(async () => {
+    try {
+      const res = await fetch(buildUrl(1));
+      if (!res.ok) return;
+      const data = await res.json();
+      const newTotal = data.totalCount ?? 0;
+      const cached = galleryCache[cacheKey];
+      const oldTotal = cached?.totalCount ?? 0;
+      const batch = data.data ?? [];
+      const cachedIds = new Set((cached?.images ?? []).map((i) => i.imageId));
+      const hasNew = newTotal !== oldTotal || batch.some((img) => !cachedIds.has(img.imageId));
+
+      if (hasNew) {
+        delete galleryCache[cacheKey];
+        const reqId = ++reqIdRef.current;
+        loadGallery(reqId);
+      }
+    } catch {
+      // silently ignore poll errors
+    }
+  }, [buildUrl, cacheKey, loadGallery]);
+
+  useEffect(() => {
+    const reqId = ++reqIdRef.current;
+    loadGallery(reqId);
+
+    clearInterval(pollTimerRef.current);
+    pollTimerRef.current = setInterval(pollForNewImages, pollInterval);
+
+    return () => clearInterval(pollTimerRef.current);
+  }, [searchTerm, categoryId]); 
+
+  // --- Render ---
+
+  if (!initialized && images.length === 0) {
     return (
-      <div className="columns-2 md:columns-3 lg:columns-4 p-4 bg-[#fafafa]" style={{ columnGap: "1rem" }}>
+      <div
+        className="columns-2 md:columns-3 lg:columns-4 p-4 bg-[#fafafa]"
+        style={{ columnGap: "1rem" }}
+      >
         {Array.from({ length: 16 }).map((_, i) => (
           <SkeletonCard key={i} height={SKELETON_HEIGHTS[i % SKELETON_HEIGHTS.length]} />
         ))}
@@ -147,13 +200,14 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
     );
   }
 
-  if (initialized.current && images.length === 0) {
+  if (initialized && images.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 gap-4">
         <div className="text-6xl">📷</div>
         <h2 className="text-2xl font-bold text-gray-700">No images found</h2>
         <p className="text-gray-400 max-w-md text-sm leading-relaxed">
-          No images uploaded for this category yet. Try exploring other categories or check back later.
+          No images uploaded for this category yet. Try exploring other categories or check back
+          later.
         </p>
         <Link to="/categories">
           <button className="mt-2 px-6 py-2.5 rounded-2xl text-sm font-semibold bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:scale-105 transition-all shadow-md shadow-pink-100">
@@ -165,17 +219,7 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
   }
 
   return (
-    
-    <InfiniteScroll
-      dataLength={images.length}
-      next={() => {}}
-      hasMore={false}
-      loader={
-        <div className="flex justify-center py-6">
-          <div className="scale-50 -my-16"><Loader /></div>
-        </div>
-      }
-    >
+    <>
       <div
         className="columns-2 md:columns-3 lg:columns-4 p-4 bg-[#fafafa]"
         style={{ columnGap: "1rem", willChange: "transform" }}
@@ -184,7 +228,15 @@ const ImageGallery = ({ searchTerm, categoryId }) => {
           <ImageCard key={img.imageId} img={img} priority={idx < 8} />
         ))}
       </div>
-    </InfiniteScroll>
+
+      {fetchingAll && (
+        <div className="flex justify-center py-4 opacity-50">
+          <div className="scale-50 -my-16">
+            <Loader />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
